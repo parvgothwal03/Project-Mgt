@@ -5,6 +5,7 @@ import { clerkMiddleware } from '@clerk/express'
 import { inngest, functions } from './inngest/index.js';
 import { serve } from "inngest/express";
 import { protect } from './Middlewares/authMiddleware.js';
+import workspaceRouter from './Routes/workspaceRoutes.js';
 const app = express();
 
 app.use(express.json());
