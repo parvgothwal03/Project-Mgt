@@ -1,6 +1,7 @@
 import { format } from "date-fns";
-import { Plus, Save } from "lucide-react";
+import { Delete, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import AddProjectMember from "./AddProjectMember";
 import { useDispatch } from "react-redux";
 import { useAuth } from "@clerk/react";
@@ -25,6 +26,8 @@ export default function ProjectSettings({ project }) {
 
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -45,6 +48,26 @@ export default function ProjectSettings({ project }) {
             setIsSubmitting(false);
         }
     };
+
+    const handleDelete = async () => {
+        const confirmed = window.confirm("Are you sure you want to delete this project? This action cannot be undone.");
+        if (!confirmed) return;
+        setIsDeleting(true);
+        toast.loading("Deleting project...");
+        try {
+            const projectId = formData.id || project.id;
+            const { data } = await api.delete(`/api/projects/${projectId}`, { headers: { Authorization: `Bearer ${await getToken()}` } });
+            dispatch(fetchWorkspaces({ getToken }));
+            toast.dismissAll();
+            toast.success(data.message || "Project deleted");
+            navigate('/projects');
+        } catch (error) {
+            toast.dismissAll();
+            toast.error(error?.response?.data?.message || "Failed to delete project.");
+        } finally {
+            setIsDeleting(false);
+        }
+    }
 
     useEffect(() => {
         if (project) setFormData(project);
@@ -115,12 +138,15 @@ export default function ProjectSettings({ project }) {
                         <input type="range" min="0" max="100" step="5" value={formData.progress} onChange={(e) => setFormData({ ...formData, progress: Number(e.target.value) })} className="w-full accent-blue-500 dark:accent-blue-400" />
                     </div>
 
-                    {/* Save Button */}
-                    <button type="submit" disabled={isSubmitting} className="ml-auto flex items-center text-sm justify-center gap-2 bg-gradient-to-br from-blue-500 to-blue-600 text-white px-4 py-2 rounded" >
-                        <Save className="size-4" /> {isSubmitting ? "Saving..." : "Save Changes"}
-                    </button>
-
-
+                    {/* Save and Delete Buttons */}
+                    <div className="grid grid-cols-2 gap-4 ml-auto">
+                        <button type="button" disabled={isDeleting} onClick={handleDelete} className="flex items-center text-sm justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded">
+                            <Trash2 className="size-4" /> {isDeleting ? "Deleting..." : "Delete Project"}
+                        </button>
+                        <button type="submit" disabled={isSubmitting} className="flex items-center text-sm justify-center gap-2 bg-gradient-to-br from-blue-500 to-blue-600 text-white px-4 py-2 rounded" >
+                            <Save className="size-4" /> {isSubmitting ? "Saving..." : "Save Changes"}
+                        </button>
+                    </div>
                 </form>
             </div>
 

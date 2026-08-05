@@ -179,3 +179,40 @@ export const addMember = async (req, res) => {
         res.status(500).json({message: error.code || error.message});
     }
 }
+
+// Delete Project
+export const deleteProject = async (req, res) => {
+    try {
+        const { userId } = await req.auth();
+        const { projectId } = req.params;
+
+        const project = await prisma.project.findUnique({ where: { id: projectId } });
+
+        if (!project) {
+            return res.status(404).json({ message: 'Project not found' });
+        }
+
+        // Check workspace membership for ADMIN role
+        const workspace = await prisma.workspace.findUnique({
+            where: { id: project.workspaceId },
+            include: { members: true }
+        });
+
+        if (!workspace) {
+            return res.status(404).json({ message: 'Workspace not found' });
+        }
+
+        const isAdmin = workspace.members.some((m) => m.userId === userId && m.role === 'ADMIN');
+
+        if (!isAdmin && project.team_lead !== userId) {
+            return res.status(403).json({ message: 'You do not have permission to delete this project' });
+        }
+
+        await prisma.project.delete({ where: { id: projectId } });
+
+        res.json({ message: 'Project deleted successfully' });
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: error.code || error.message });
+    }
+}
